@@ -35,9 +35,7 @@ use pocketmine\tile\Tile;
 class HudSystem extends PluginBase{
 
 	// По вопросам: vk.com/To4No_Ne_Beret
-
-	// EnderChest mb 1.1 version
-	// ya hz kak y seba obnosly
+	// ебал а нахуя мне эндер чест
 
     private array $viewers = ["mini" => [], "double" => []], 
                   $lists = ["mini" => [], "double" => []];
@@ -181,20 +179,6 @@ class HudSystem extends PluginBase{
         $this->loader->getScheduler()->scheduleDelayedTask(new ClosureTask(function(int $currentTick) use($inventory, $player) : void{
             $this->openWindow($inventory, $player, false, false);
         }), 5);
-		// тут я хз с чем связанно дабл чест и заполнение инвентаря делать раздельно
-		
-		/*
-		$this->loader->getScheduler()->scheduleDelayedTask(new ClosureTask(function(int $currentTick) use($inventory, $player) : void{
-			$this->fillWindowSlot($inv, 0, $item);
-		}), 6);
-		*/
-
-		// хз с чем это связано но в мини честе этого не происходит
-		/*
-			$this->openMini($player, $name);
-			$this->fillWindowSlot($inv, 0, $item);
-		*/
-
     }
 
 	public function closeDouble(Player $player){
@@ -272,10 +256,15 @@ class HudSystem extends PluginBase{
 	public function isHudItem(Item $item){
 		return isset($item->getNamedTag()["HudItem"]);
 	}
+
+	public function isValidItem(ContainerInventory $inventory, Item $item){
+		return $item->getNamedTag()["Title"] == $inventory->getTitle();
+	}
     
     public function fillWindowSlot(ContainerInventory $inventory, int $slot, Item $item) : void{
 		$nbt = $item->getNamedTag() ?? new CompoundTag();
-        $nbt = new ByteTag("HudItem", 1);
+        $nbt->setByte("HudItem", 1);
+		$nbt->setString("Title", $inventory->getTitle());
         $item->setNamedTagEntry($nbt);
         $inventory->setItem($slot, $item);
 	}

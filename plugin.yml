@@ -2,4 +2,4 @@ name: HudSystem
 main: beretezzka\HudSystem
 version: 1.0
 author: beretezzka (vk.com/To4No_ne_Beret)
-load: POSTWOLD
+based: by BeretMine project
