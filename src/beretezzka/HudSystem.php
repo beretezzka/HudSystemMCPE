@@ -45,9 +45,10 @@ class HudSystem extends PluginBase{
 
     public function onEnable(){
 		self::$instance = $this;
+		// если оптимизация шатаеться советую оффнуть 
         $this->getScheduler()->scheduleRepeatingTask(new ClosureTask(function(int $currentTick) : void{
             $this->onUpdate();
-        }), 5);
+        }), 10);
         Server::getInstance()->getPluginManager()->registerEvents(new Events($this), $this);
     }
 
@@ -55,6 +56,7 @@ class HudSystem extends PluginBase{
 		return self::$instance;
 	}
 
+	// это я ваще неебу зачем добавил может потом доделаю или вырежу как мать деко
 	public function getList(Player $player){
 		if($this->isViewDouble($player)){
 			return 1;

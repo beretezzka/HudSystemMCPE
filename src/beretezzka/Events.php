@@ -12,7 +12,8 @@ use beretezzka\event\HudTransactionEvent;
 use beretezzka\inventory\HudPersonalInventory;
 use beretezzka\inventory\HudPersonalInventoryD;
 use beretezzka\beretmine\Loader;
-
+use beretezzka\event\HudUpdateEvent;
+use pocketmine\event\player\PlayerGameModeChangeEvent;
 use pocketmine\event\entity\EntityDamageEvent;
 use pocketmine\event\inventory\InventoryCloseEvent;
 use pocketmine\event\inventory\InventoryOpenEvent;
@@ -23,7 +24,9 @@ use pocketmine\event\player\PlayerQuitEvent;
 use pocketmine\inventory\PETransaction\TransactionQueue;
 use pocketmine\item\Item;
 use pocketmine\Player;
+use pocketmine\event\player\PlayerCommandPreprocessEvent;
 use pocketmine\scheduler\ClosureTask;
+use pocketmine\event\inventory\InventoryPickupItemEvent;
 use pocketmine\Server;
 
 class Events implements Listener{
@@ -42,6 +45,34 @@ class Events implements Listener{
         $event = new HudQuitEvent($this->loader, $player);
         Server::getInstance()->getPluginManager()->callEvent($event);
         return;
+    }
+
+    public function updater(HudUpdateEvent $event){
+        $double = $event->getDouble();
+        $mini = $event->getMini();
+        foreach($mini as $nick => $data){
+            $player = Server::getInstance()->getPlayer($nick);
+            if($player instanceof Player && $player->isCreative() && !$player->isOp() || $player->getPing() > 200){
+                $player->sendMessage("§cПопробуйте снова..");
+                HudSystem::getInstance()->closeMini($player);
+                continue;
+            }
+        }
+        foreach($double as $nick => $data){
+            $player = Server::getInstance()->getPlayer($nick);
+            if($player instanceof Player && $player->isCreative() && !$player->isOp() || $player->getPing() > 200){
+                $player->sendMessage("§cПопробуйте снова..");
+                HudSystem::getInstance()->closeDouble($player);
+                continue;
+            }
+        }
+    }
+    
+    public function command(PlayerCommandPreprocessEvent $event){
+        if (HudSystem::getInstance()->isViewDouble($event->getPlayer()) || HudSystem::getInstance()->isViewMini($event->getPlayer())) {
+            $event->getPlayer()->sendMessage("§r§cКоманду невозможно ввести в данный момент.");
+            $event->setCancelled();
+        }
     }
 
     public function transaction(InventoryTransactionEvent $event){
@@ -98,6 +129,15 @@ class Events implements Listener{
         }
     }
 
+    public function pickupitem(InventoryPickupItemEvent $event) {
+        if(!$event->getInventory() instanceof PlayerInventory) return;
+        $player = $event->getInventory()->getHolder();
+        if (HudSystem::getInstance()->isViewDouble($player) || HudSystem::getInstance()->isViewMini($player)) {
+            $event->setCancelled(true);
+            return;
+        }
+    }
+
     public function drop(PlayerDropItemEvent $event){
         $player = $event->getPlayer();
         if (!HudSystem::getInstance()->isViewDouble($player) && !HudSystem::getInstance()->isViewMini($player)) {
@@ -109,6 +149,17 @@ class Events implements Listener{
         $event = new HudDropEvent($this->loader, $player, $item);
         Server::getInstance()->getPluginManager()->callEvent($event);
         return;
+    }
+
+    public function regm(PlayerGameModeChangeEvent $event){
+        $player = $event->getPlayer();
+        if (HudSystem::getInstance()->isViewDouble($player)) {
+            HudSystem::getInstance()->closeDouble($player);
+            return;
+        }elseif(HudSystem::getInstance()->isViewMini($player)){
+            HudSystem::getInstance()->closeMini($player);
+            return;
+        }
     }
 
     public function damage(EntityDamageEvent $event){
