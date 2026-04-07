@@ -12,12 +12,11 @@ class HudTransactionEvent extends PluginEvent{
     
     public array $mini = [],
                  $double = [];
-    public $player, $inventory, $list, $item;
+    public $player, $inventory, $item;
 
-    public function __construct(Plugin $plugin, $inventory, Player $player, Item $item, int $list, $mini = [], $double = []){
+    public function __construct(Plugin $plugin, $inventory, Player $player, Item $item, $mini = [], $double = []){
         $this->player = $player;
         $this->inventory = $inventory;
-        $this->list = $list;
         $this->double = $double;
         $this->mini = $mini;
         $this->item = $item;
@@ -38,10 +37,6 @@ class HudTransactionEvent extends PluginEvent{
 
     public function getInventory() {
         return $this->inventory;
-    }
-
-    public function getList(): int{
-        return $this->list;
     }
 
     public function getAllMini(): array{

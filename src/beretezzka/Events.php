@@ -14,6 +14,7 @@ use beretezzka\inventory\HudPersonalInventoryD;
 use beretezzka\beretmine\Loader;
 use beretezzka\event\HudUpdateEvent;
 use pocketmine\event\player\PlayerGameModeChangeEvent;
+use pocketmine\event\server\DataPacketReceiveEvent;
 use pocketmine\event\entity\EntityDamageEvent;
 use pocketmine\event\inventory\InventoryCloseEvent;
 use pocketmine\event\inventory\InventoryOpenEvent;
@@ -23,6 +24,9 @@ use pocketmine\event\player\PlayerDropItemEvent;
 use pocketmine\event\player\PlayerQuitEvent;
 use pocketmine\inventory\PETransaction\TransactionQueue;
 use pocketmine\item\Item;
+use pocketmine\network\mcpe\protocol\ContainerSetSlotPacket;
+use pocketmine\network\mcpe\protocol\InventoryTransactionPacket;
+use pocketmine\network\mcpe\protocol\ProtocolInfo;
 use pocketmine\Player;
 use pocketmine\event\player\PlayerCommandPreprocessEvent;
 use pocketmine\scheduler\ClosureTask;
@@ -75,9 +79,39 @@ class Events implements Listener{
         }
     }
 
+    public function setslot(DataPacketReceiveEvent $event){
+        $player = $event->getPlayer();
+        if (!$player->isConnected() || $player->getProtocol() < ProtocolInfo::PROTOCOL_130) {
+            return;
+        }
+        if ($event->getPacket() instanceof InventoryTransactionPacket || $event->getPacket() instanceof ContainerSetSlotPacket) {
+            if (!HudSystem::getInstance()->isViewDouble($player) && !HudSystem::getInstance()->isViewMini($player)) {
+                return;
+            }
+  
+            if ($event->getPacket() instanceof ContainerSetSlotPacket) {
+                if ($player->getProtocol() > 130) return;
+                $item = $event->getPacket()->item ?? null;
+            } elseif ($event->getPacket() instanceof InventoryTransactionPacket) {
+                if ($player->getProtocol() < 130) return;
+                $item = null;
+                foreach ($event->getPacket()->actions as $action) {
+                    $item = $action->newItem;
+                }
+            }
+            if ($item === null){
+                return;
+            }
+            $inventory = HudSystem::getInstance()->getInventory($player);
+            $event = new HudTransactionEvent($this->loader, $inventory, $player, $item);
+            Server::getInstance()->getPluginManager()->callEvent($event);
+        }
+    }
+
     public function transaction(InventoryTransactionEvent $event){
         $transaction = $event->getTransaction();
         $player = $transaction->getSource();
+
         if (!HudSystem::getInstance()->isViewDouble($player) && !HudSystem::getInstance()->isViewMini($player)) {
             return;
         }
@@ -87,7 +121,7 @@ class Events implements Listener{
             foreach ($transaction->getTransactions() as $_transaction) {
                 $inventory = $_transaction->getInventory();
                 $item = $inventory->getItem($_transaction->getSlot());
-                $event = new HudTransactionEvent($this->loader, $inventory, $player, $item, HudSystem::getInstance()->getList($player));
+                $event = new HudTransactionEvent($this->loader, $inventory, $player, $item);
                 Server::getInstance()->getPluginManager()->callEvent($event);
                 return;
             }
@@ -102,12 +136,12 @@ class Events implements Listener{
         }
 
         if($inventory instanceof HudPersonalInventoryD){
-            $event = new HudDoubleOpenEvent($this->loader, $player, $inventory, HudSystem::getInstance()->getList($player));
+            $event = new HudDoubleOpenEvent($this->loader, $player);
             Server::getInstance()->getPluginManager()->callEvent($event);
             return;
         }
         if($inventory instanceof HudPersonalInventory){
-            $event = new HudOpenEvent($this->loader, $player, $inventory, HudSystem::getInstance()->getList($player));
+            $event = new HudOpenEvent($this->loader, $player, $inventory);
             Server::getInstance()->getPluginManager()->callEvent($event);
             return;
         }

@@ -35,7 +35,7 @@ use pocketmine\tile\Tile;
 class HudSystem extends PluginBase{
 
 	// По вопросам: vk.com/To4No_Ne_Beret
-	// ебал а нахуя мне эндер чест
+	// ver 1.2
 
     private array $viewers = ["mini" => [], "double" => []], 
                   $lists = ["mini" => [], "double" => []];
@@ -45,7 +45,6 @@ class HudSystem extends PluginBase{
 
     public function onEnable(){
 		self::$instance = $this;
-		// если оптимизация шатаеться советую оффнуть 
         $this->getScheduler()->scheduleRepeatingTask(new ClosureTask(function(int $currentTick) : void{
             $this->onUpdate();
         }), 10);
@@ -54,17 +53,6 @@ class HudSystem extends PluginBase{
 
 	public static function getInstance(): HudSystem{
 		return self::$instance;
-	}
-
-	// это я ваще неебу зачем добавил может потом доделаю или вырежу как мать деко
-	public function getList(Player $player){
-		if($this->isViewDouble($player)){
-			return 1;
-		}
-		if($this->isViewMini($player)){
-			return 1;
-		}
-		return 0;
 	}
 
     public function onUpdate(){
@@ -92,6 +80,55 @@ class HudSystem extends PluginBase{
 		return isset($this->viewers["double"][$player->getLowerCaseName()]) ? $this->viewers["double"][$player->getLowerCaseName()][0] : $this->viewers["mini"][$player->getLowerCaseName()][0];
 	}
 
+	public function spawnBedrockChest($player, $name){
+		$pk = new UpdateBlockPacket();
+		$pk->x = (int)($player->x);
+		$pk->y = (int)($player->y) - 3;
+		$pk->z = (int)($player->z);
+		$pk->blockId = 54;
+		$pk->blockMeta = 5;
+		$pk->flags = UpdateBlockPacket::FLAG_ALL;
+		$player->sendDataPacket($pk);
+
+		$pk = new UpdateBlockPacket();
+		$pk->x = (int)($player->x);
+		$pk->y = (int)($player->y) - 3;
+		$pk->z = (int)($player->z) + 1;
+		
+		$pk->blockId = 54;
+		$pk->blockMeta = 5;
+		$pk->flags = UpdateBlockPacket::FLAG_ALL;
+		$player->sendDataPacket($pk);
+
+		$level = $player->getLevel();
+		if($level === null) return;
+
+		$nbt = new CompoundTag($name, [
+			new StringTag("id", Tile::CHEST),
+			new StringTag("CustomName", $name),
+			new IntTag("x", (int)round($player->x)),
+			new IntTag("y", (int)round($player->y) - 3),
+			new IntTag("z", (int)round($player->z))
+		]);
+
+		$tile1 = Tile::createTile("Chest", $level, $nbt);
+
+		$nbt = new CompoundTag($name, [
+			new StringTag("id", Tile::CHEST),
+			new StringTag("CustomName", $name),
+			new IntTag("x", (int)($player->x)),
+			new IntTag("y", (int)($player->y) - 3),
+			new IntTag("z", (int)($player->z) + 1)
+		]);
+
+		$tile2 = Tile::createTile("Chest", $level, $nbt);
+		if($tile1 === null || $tile2 === null || !$tile1 instanceof Chest || !$tile2 instanceof Chest){
+			return;
+		}
+		$tile1->pairWith($tile2);
+		$tile2->pairWith($tile1);
+	}
+
     public function spawnChest(Player $recipient, Block $block){
 		$pk = new UpdateBlockPacket();
 		$pk->blockId = $block->getId();
@@ -103,6 +140,7 @@ class HudSystem extends PluginBase{
 		$recipient->dataPacket($pk);
     }
 
+	
 	public function open(Player $player, string $name){
         if(!$player->isValid()){
 			return;
@@ -150,8 +188,23 @@ class HudSystem extends PluginBase{
         $vector3 = $player->floor()->subtract(0, 3);
         $pairVector3 = $vector3->getSide(Vector3::SIDE_WEST);
         $level = $player->getLevel();
+		if($level === null) return;
 		$blockReplaced = $level->getBlock($vector3);
 		$blockReplaced2 = $level->getBlock($pairVector3);
+
+		if($player->getProtocol() > 120){
+			$this->spawnBedrockChest($player, $name);
+			$this->setListDouble($player, 1);
+
+			$inventory = new HudPersonalInventoryD(new HudPersonalInventory(Position::fromObject($vector3, $level)), new HudPersonalInventory(Position::fromObject($pairVector3, $level)), Position::fromObject($vector3, $level));
+
+			$this->viewers["double"][$player->getLowerCaseName()] = [$inventory, $blockReplaced, $blockReplaced2, $player->floor()];
+
+			$this->loader->getScheduler()->scheduleDelayedTask(new ClosureTask(function(int $currentTick) use($inventory, $player) : void{
+				$this->openWindow($inventory, $player, false, false);
+			}), 4);
+			return;
+		}
 
 		$this->spawnChest($player, Block::get(BlockIds::CHEST, 2, Position::fromObject($vector3)));
 		$this->spawnChest($player, Block::get(BlockIds::CHEST, 3, Position::fromObject($pairVector3)));
