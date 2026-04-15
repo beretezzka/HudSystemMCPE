@@ -30,6 +30,7 @@ use pocketmine\Player;
 use pocketmine\plugin\PluginBase;
 use pocketmine\scheduler\ClosureTask;
 use pocketmine\Server;
+use pocketmine\tile\Chest;
 use pocketmine\tile\Tile;
 
 class HudSystem extends PluginBase{
@@ -80,59 +81,10 @@ class HudSystem extends PluginBase{
 		return isset($this->viewers["double"][$player->getLowerCaseName()]) ? $this->viewers["double"][$player->getLowerCaseName()][0] : $this->viewers["mini"][$player->getLowerCaseName()][0];
 	}
 
-	public function spawnBedrockChest($player, $name){
-		$pk = new UpdateBlockPacket();
-		$pk->x = (int)($player->x);
-		$pk->y = (int)($player->y) - 3;
-		$pk->z = (int)($player->z);
-		$pk->blockId = 54;
-		$pk->blockMeta = 5;
-		$pk->flags = UpdateBlockPacket::FLAG_ALL;
-		$player->sendDataPacket($pk);
-
-		$pk = new UpdateBlockPacket();
-		$pk->x = (int)($player->x);
-		$pk->y = (int)($player->y) - 3;
-		$pk->z = (int)($player->z) + 1;
-		
-		$pk->blockId = 54;
-		$pk->blockMeta = 5;
-		$pk->flags = UpdateBlockPacket::FLAG_ALL;
-		$player->sendDataPacket($pk);
-
-		$level = $player->getLevel();
-		if($level === null) return;
-
-		$nbt = new CompoundTag($name, [
-			new StringTag("id", Tile::CHEST),
-			new StringTag("CustomName", $name),
-			new IntTag("x", (int)round($player->x)),
-			new IntTag("y", (int)round($player->y) - 3),
-			new IntTag("z", (int)round($player->z))
-		]);
-
-		$tile1 = Tile::createTile("Chest", $level, $nbt);
-
-		$nbt = new CompoundTag($name, [
-			new StringTag("id", Tile::CHEST),
-			new StringTag("CustomName", $name),
-			new IntTag("x", (int)($player->x)),
-			new IntTag("y", (int)($player->y) - 3),
-			new IntTag("z", (int)($player->z) + 1)
-		]);
-
-		$tile2 = Tile::createTile("Chest", $level, $nbt);
-		if($tile1 === null || $tile2 === null || !$tile1 instanceof Chest || !$tile2 instanceof Chest){
-			return;
-		}
-		$tile1->pairWith($tile2);
-		$tile2->pairWith($tile1);
-	}
-
     public function spawnChest(Player $recipient, Block $block){
 		$pk = new UpdateBlockPacket();
-		$pk->blockId = $block->getId();
-		$pk->blockMeta = $block->getDamage();
+		$pk->blockId = BlockIds::CHEST;
+		$pk->blockMeta = 0;
 		$pk->x = $block->x;
 		$pk->z = $block->z;
 		$pk->y = $block->y;
@@ -173,7 +125,7 @@ class HudSystem extends PluginBase{
 
         $this->loader->getScheduler()->scheduleDelayedTask(new ClosureTask(function(int $currentTick) use($inventory, $player) : void{
             $this->openWindow($inventory, $player, false, false);
-        }), 5);
+        }), 2);
     }
 
     public function openDouble(Player $player, string $name){
@@ -185,29 +137,12 @@ class HudSystem extends PluginBase{
 			return;
 		}
 
-        $vector3 = $player->floor()->subtract(0, 3);
-        $pairVector3 = $vector3->getSide(Vector3::SIDE_WEST);
-        $level = $player->getLevel();
-		if($level === null) return;
-		$blockReplaced = $level->getBlock($vector3);
-		$blockReplaced2 = $level->getBlock($pairVector3);
-
-		if($player->getProtocol() > 120){
-			$this->spawnBedrockChest($player, $name);
-			$this->setListDouble($player, 1);
-
-			$inventory = new HudPersonalInventoryD(new HudPersonalInventory(Position::fromObject($vector3, $level)), new HudPersonalInventory(Position::fromObject($pairVector3, $level)), Position::fromObject($vector3, $level));
-
-			$this->viewers["double"][$player->getLowerCaseName()] = [$inventory, $blockReplaced, $blockReplaced2, $player->floor()];
-
-			$this->loader->getScheduler()->scheduleDelayedTask(new ClosureTask(function(int $currentTick) use($inventory, $player) : void{
-				$this->openWindow($inventory, $player, false, false);
-			}), 4);
-			return;
-		}
+		$blockReplaced = ($level = $player->getLevel())->getBlock($vector3 = $player->floor()->subtract(0, 3));
+		$blockReplaced2 = $level->getBlock($pairVector3 = $vector3->getSide(Vector3::SIDE_WEST));
+        if($level === null) return;
 
 		$this->spawnChest($player, Block::get(BlockIds::CHEST, 2, Position::fromObject($vector3)));
-		$this->spawnChest($player, Block::get(BlockIds::CHEST, 3, Position::fromObject($pairVector3)));
+		$this->spawnChest($player, Block::get(BlockIds::CHEST, 2, Position::fromObject($pairVector3)));
 
 		$tilePacket = new BlockActorDataPacket();
         $tilePacket->x = $vector3->getFloorX();
@@ -232,8 +167,8 @@ class HudSystem extends PluginBase{
 		$this->viewers["double"][$player->getLowerCaseName()] = [$inventory, $blockReplaced, $blockReplaced2, $player->floor()];
 
         $this->loader->getScheduler()->scheduleDelayedTask(new ClosureTask(function(int $currentTick) use($inventory, $player) : void{
-            $this->openWindow($inventory, $player, false, false);
-        }), 5);
+			$this->openWindow($inventory, $player, false, false);
+        }), 2);
     }
 
 	public function closeDouble(Player $player){
@@ -249,17 +184,24 @@ class HudSystem extends PluginBase{
 			return;
 		}
 		
-		if(HudSystem::getInstance()->isViewDouble($player)){
-			$blocksReplaced = $this->viewers["double"][$player->getLowerCaseName()][1];
-		}else{
+		if(!isset($this->viewers["double"][$player->getLowerCaseName()])){
+			if(isset($this->lists["double"][$player->getLowerCaseName()])) unset($this->lists["double"][$player->getLowerCaseName()]);
 			return;
 		}
 
-		if($player->isValid()){
-			$player->getLevel()->sendBlocks([$player], [$blocksReplaced], UpdateBlockPacket::FLAG_ALL_PRIORITY);
-			$tile = $player->getLevel()->getTile($blocksReplaced->asPosition());
-			if($tile instanceof Tile){
-				$tile->spawnTo($player);
+		$blocksReplaced = $this->viewers["double"][$player->getLowerCaseName()][1];
+		$blocksReplaced2 = $this->viewers["double"][$player->getLowerCaseName()][2];
+
+		$level = $player->getLevel();
+		if($level !== null && $player->isValid()){
+			$level->sendBlocks([$player], [$blocksReplaced, $blocksReplaced2], UpdateBlockPacket::FLAG_ALL_PRIORITY);
+			$tile1 = $level->getTile($blocksReplaced->asPosition());
+			$tile2 = $level->getTile($blocksReplaced2->asPosition());
+			if($tile1 instanceof Chest && $player->isValid()){
+				$tile1->spawnTo($player);
+			}
+			if($tile2 instanceof Chest && $player->isValid()){
+				$tile2->spawnTo($player);
 			}
 		}
 		unset($this->lists["double"][$player->getLowerCaseName()]);
@@ -288,7 +230,7 @@ class HudSystem extends PluginBase{
 		if($player->isValid()){
 			$player->getLevel()->sendBlocks([$player], [$blocksReplaced], UpdateBlockPacket::FLAG_ALL_PRIORITY);
 			$tile = $player->getLevel()->getTile($blocksReplaced->asPosition());
-			if($tile instanceof Tile){
+			if($tile instanceof Chest){
 				$tile->spawnTo($player);
 			}
 		}
