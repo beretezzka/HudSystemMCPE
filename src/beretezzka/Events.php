@@ -14,6 +14,7 @@ use beretezzka\inventory\HudPersonalInventoryD;
 use beretezzka\beretmine\Loader;
 use beretezzka\event\HudUpdateEvent;
 use pocketmine\event\player\PlayerGameModeChangeEvent;
+use pocketmine\event\player\PlayerMoveEvent;
 use pocketmine\event\server\DataPacketReceiveEvent;
 use pocketmine\event\entity\EntityDamageEvent;
 use pocketmine\event\inventory\InventoryCloseEvent;
@@ -73,6 +74,21 @@ class Events implements Listener{
             }
         }
     }
+
+    public function move(PlayerMoveEvent $event){
+        $player = $event->getPlayer();
+        if (!HudSystem::getInstance()->isViewDouble($player) && !HudSystem::getInstance()->isViewMini($player)) {
+            return;
+        }
+        if($event->getTo()->distance($event->getFrom()) > 0.12){
+            if(HudSystem::getInstance()->isViewDouble($player)){
+                HudSystem::getInstance()->closeDouble($player);
+            }
+            if(HudSystem::getInstance()->isViewMini($player)){
+                HudSystem::getInstance()->closeMini($player);
+            }
+        }
+    }
     
     public function command(PlayerCommandPreprocessEvent $event){
         if (HudSystem::getInstance()->isViewDouble($event->getPlayer()) || HudSystem::getInstance()->isViewMini($event->getPlayer())) {
@@ -94,6 +110,9 @@ class Events implements Listener{
             foreach ($transaction->getTransactions() as $_transaction) {
                 $inventory = $_transaction->getInventory();
                 $item = $inventory->getItem($_transaction->getSlot());
+                if(!$item instanceof Item || $item == null){
+                    continue;
+                }
                 if (!HudSystem::getInstance()->isHudItem($item)) {
                     continue;
                 }
@@ -105,6 +124,9 @@ class Events implements Listener{
                 if ($_transaction instanceof SlotChangeAction) {
                     $inventory = $_transaction->getInventory();
                     $item = $inventory->getItem($_transaction->getSlot());
+                    if(!$item instanceof Item || $item == null){
+                        continue;
+                    }
                     Server::getInstance()->getPluginManager()->callEvent(new HudTransactionEvent($this->loader, $inventory, $player, $item));
                     continue;
                 }

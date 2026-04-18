@@ -124,7 +124,7 @@ class HudSystem extends PluginBase{
 		$this->viewers["mini"][$player->getLowerCaseName()] = [$inventory, $blockReplaced, $player->floor()];
 
         $this->loader->getScheduler()->scheduleDelayedTask(new ClosureTask(function(int $currentTick) use($inventory, $player) : void{
-            $this->openWindow($inventory, $player, false, false);
+            $this->openWindow($inventory, $player);
         }), 2);
     }
 
@@ -167,7 +167,7 @@ class HudSystem extends PluginBase{
 		$this->viewers["double"][$player->getLowerCaseName()] = [$inventory, $blockReplaced, $blockReplaced2, $player->floor()];
 
         $this->loader->getScheduler()->scheduleDelayedTask(new ClosureTask(function(int $currentTick) use($inventory, $player) : void{
-			$this->openWindow($inventory, $player, false, false);
+			$this->openWindow($inventory, $player);
         }), 2);
     }
 
@@ -238,7 +238,7 @@ class HudSystem extends PluginBase{
 		unset($this->lists["mini"][$player->getLowerCaseName()]);
 	}
 
-    public function openWindow(Inventory $inventory, Player $player, bool $mini = false, $ender = false){
+    public function openWindow(Inventory $inventory, Player $player){
         if($player instanceof Player and $player->isOnline()){
 			$player->addWindow($inventory);
 			return;
