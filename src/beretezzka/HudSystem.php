@@ -17,12 +17,8 @@ use pocketmine\item\Item;
 use pocketmine\level\Position;
 use pocketmine\math\Vector3;
 use pocketmine\nbt\NetworkLittleEndianNBTStream;
-use pocketmine\nbt\tag\ByteTag;
 use pocketmine\nbt\tag\CompoundTag;
-use pocketmine\nbt\tag\DoubleTag;
-use pocketmine\nbt\tag\FloatTag;
 use pocketmine\nbt\tag\IntTag;
-use pocketmine\nbt\tag\ListTag;
 use pocketmine\nbt\tag\StringTag;
 use pocketmine\network\mcpe\protocol\BlockActorDataPacket;
 use pocketmine\network\mcpe\protocol\UpdateBlockPacket;
@@ -31,7 +27,6 @@ use pocketmine\plugin\PluginBase;
 use pocketmine\scheduler\ClosureTask;
 use pocketmine\Server;
 use pocketmine\tile\Chest;
-use pocketmine\tile\Tile;
 
 class HudSystem extends PluginBase{
 
@@ -48,7 +43,7 @@ class HudSystem extends PluginBase{
 		self::$instance = $this;
         $this->getScheduler()->scheduleRepeatingTask(new ClosureTask(function(int $currentTick) : void{
             $this->onUpdate();
-        }), 10);
+        }), 15);
         Server::getInstance()->getPluginManager()->registerEvents(new Events($this), $this);
     }
 
@@ -57,8 +52,7 @@ class HudSystem extends PluginBase{
 	}
 
     public function onUpdate(){
-		$event = new HudUpdateEvent($this, $this->viewers);
-        Server::getInstance()->getPluginManager()->callEvent($event);
+        Server::getInstance()->getPluginManager()->callEvent(new HudUpdateEvent($this, $this->viewers));
     }
 
 	public function setListMini(Player $player, $list){
@@ -67,6 +61,14 @@ class HudSystem extends PluginBase{
 
 	public function setListDouble(Player $player, $list){
 		return $this->lists["double"][$player->getLowerCaseName()] = $list;
+	}
+
+	public function getListDouble(Player $player, $list){
+		return $this->lists["double"][$player->getLowerCaseName()];
+	}
+
+	public function getListMini(Player $player, $list){
+		return $this->lists["mini"][$player->getLowerCaseName()];
 	}
 
 	public function isViewMini(Player $player){
@@ -93,7 +95,7 @@ class HudSystem extends PluginBase{
     }
 
 	
-	public function open(Player $player, string $name){
+	public function open(Player $player, string $name, int $id){
         if(!$player->isValid()){
 			return;
 		}
@@ -117,7 +119,7 @@ class HudSystem extends PluginBase{
 
 		$player->dataPacket($tilePacket);
 
-		$this->setListMini($player, 1);
+		$this->setListMini($player, $id);
 
 		$inventory = new HudPersonalInventory(Position::fromObject($vector3, $player->getLevel()));
 
@@ -128,7 +130,7 @@ class HudSystem extends PluginBase{
         }), 2);
     }
 
-    public function openDouble(Player $player, string $name){
+    public function openDouble(Player $player, string $name, int $id){
         if(!$player->isValid()){
 			return;
 		}
@@ -160,7 +162,7 @@ class HudSystem extends PluginBase{
 
 		$player->dataPacket($tilePacket);
 
-		$this->setListDouble($player, 1);
+		$this->setListDouble($player, $id);
 
 		$inventory = new HudPersonalInventoryD(new HudPersonalInventory(Position::fromObject($vector3, $player->getLevel())), new HudPersonalInventory(Position::fromObject($pairVector3, $player->getLevel())), Position::fromObject($vector3, $player->getLevel()));
 
@@ -259,10 +261,12 @@ class HudSystem extends PluginBase{
 	}
     
     public function fillWindowSlot(ContainerInventory $inventory, int $slot, Item $item) : void{
-		$nbt = $item->getNamedTag() ?? new CompoundTag();
-        $nbt->setByte("HudItem", 1);
-		$nbt->setString("Title", $inventory->getTitle());
-        $item->setNamedTagEntry($nbt);
+		if($item->getId() !== ItemIds::AIR){
+			$nbt = $item->getNamedTag() ?? new CompoundTag();
+			$nbt->setByte("HudItem", 1);
+			$nbt->setString("Title", $inventory->getTitle());
+			$item->setNamedTagEntry($nbt);
+		}
         $inventory->setItem($slot, $item);
 	}
 	

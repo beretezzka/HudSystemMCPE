@@ -11,11 +11,9 @@ use beretezzka\event\HudQuitEvent;
 use beretezzka\event\HudTransactionEvent;
 use beretezzka\inventory\HudPersonalInventory;
 use beretezzka\inventory\HudPersonalInventoryD;
-use beretezzka\beretmine\Loader;
 use beretezzka\event\HudUpdateEvent;
 use pocketmine\event\player\PlayerGameModeChangeEvent;
 use pocketmine\event\player\PlayerMoveEvent;
-use pocketmine\event\server\DataPacketReceiveEvent;
 use pocketmine\event\entity\EntityDamageEvent;
 use pocketmine\event\inventory\InventoryCloseEvent;
 use pocketmine\event\inventory\InventoryOpenEvent;
@@ -27,12 +25,8 @@ use pocketmine\inventory\PETransaction\TransactionQueue;
 use pocketmine\inventory\transaction\action\SlotChangeAction;
 use pocketmine\inventory\transaction\InventoryTransaction;
 use pocketmine\item\Item;
-use pocketmine\network\mcpe\protocol\ContainerSetSlotPacket;
-use pocketmine\network\mcpe\protocol\InventoryTransactionPacket;
-use pocketmine\network\mcpe\protocol\ProtocolInfo;
 use pocketmine\Player;
 use pocketmine\event\player\PlayerCommandPreprocessEvent;
-use pocketmine\scheduler\ClosureTask;
 use pocketmine\event\inventory\InventoryPickupItemEvent;
 use pocketmine\Server;
 
@@ -49,15 +43,12 @@ class Events implements Listener{
         if (!HudSystem::getInstance()->isViewDouble($player) && !HudSystem::getInstance()->isViewMini($player)) {
             return;
         }
-        $event = new HudQuitEvent($this->loader, $player);
-        Server::getInstance()->getPluginManager()->callEvent($event);
+        Server::getInstance()->getPluginManager()->callEvent(new HudQuitEvent($this->loader, $player));
         return;
     }
 
     public function updater(HudUpdateEvent $event){
-        $double = $event->getDouble();
-        $mini = $event->getMini();
-        foreach($mini as $nick => $data){
+        foreach($event->getMini() as $nick => $data){
             $player = Server::getInstance()->getPlayer($nick);
             if($player instanceof Player && $player->isCreative() && !$player->isOp() || $player->getPing() > 200){
                 $player->sendMessage("§cПопробуйте снова..");
@@ -65,7 +56,7 @@ class Events implements Listener{
                 continue;
             }
         }
-        foreach($double as $nick => $data){
+        foreach($event->getDouble() as $nick => $data){
             $player = Server::getInstance()->getPlayer($nick);
             if($player instanceof Player && $player->isCreative() && !$player->isOp() || $player->getPing() > 200){
                 $player->sendMessage("§cПопробуйте снова..");
@@ -143,13 +134,11 @@ class Events implements Listener{
         }
 
         if($inventory instanceof HudPersonalInventoryD){
-            $event = new HudDoubleOpenEvent($this->loader, $player);
-            Server::getInstance()->getPluginManager()->callEvent($event);
+            Server::getInstance()->getPluginManager()->callEvent(new HudDoubleOpenEvent($this->loader, $player));
             return;
         }
         if($inventory instanceof HudPersonalInventory){
-            $event = new HudOpenEvent($this->loader, $player, $inventory);
-            Server::getInstance()->getPluginManager()->callEvent($event);
+            Server::getInstance()->getPluginManager()->callEvent(new HudOpenEvent($this->loader, $player, $inventory));
             return;
         }
     }
@@ -159,8 +148,7 @@ class Events implements Listener{
         $player = $event->getPlayer();
         
         if($inventory instanceof HudPersonalInventoryD || $inventory instanceof HudPersonalInventory){
-            $event = new HudCloseEvent($this->loader, $player, $inventory);
-            Server::getInstance()->getPluginManager()->callEvent($event);
+            Server::getInstance()->getPluginManager()->callEvent(new HudCloseEvent($this->loader, $player, $inventory));
             foreach($player->getInventory()->getContents() as $item){
                 if(HudSystem::getInstance()->isHudItem($item)){
                     $player->getInventory()->remove($item);
@@ -177,6 +165,12 @@ class Events implements Listener{
             $event->setCancelled(true);
             return;
         }
+        if(HudSystem::getInstance()->isHudItem($event->getItem())){
+            if(!$event->getItem()->isClosed()){
+                $event->getItem()->close();
+                return;
+            }
+        }
     }
 
     public function drop(PlayerDropItemEvent $event){
@@ -184,11 +178,12 @@ class Events implements Listener{
         if (!HudSystem::getInstance()->isViewDouble($player) && !HudSystem::getInstance()->isViewMini($player)) {
             return;
         }
-        $item = $event->getItem();
-        $event->setCancelled();
 
-        $event = new HudDropEvent($this->loader, $player, $item);
-        Server::getInstance()->getPluginManager()->callEvent($event);
+        if(HudSystem::getInstance()->isHudItem($event->getItem())){
+            $event->setCancelled(true);
+        }
+
+        Server::getInstance()->getPluginManager()->callEvent(new HudDropEvent($this->loader, $player, $event->getItem()));
         return;
     }
 
@@ -207,17 +202,15 @@ class Events implements Listener{
         $entity = $event->getEntity();
 
         if($entity instanceof Player){
-            $player = $entity;
-            if (!HudSystem::getInstance()->isViewDouble($player) && !HudSystem::getInstance()->isViewMini($player)) {
+            if (!HudSystem::getInstance()->isViewDouble($entity) && !HudSystem::getInstance()->isViewMini($entity)) {
                 return;
             }
 
-            if($event->getBaseDamage() >= $player->getHealth()){
+            if($event->getBaseDamage() >= $entity->getHealth()){
                 $event->setCancelled();
             }
 
-            $event = new HudDamagePlayerEvent($this->loader, $player);
-            Server::getInstance()->getPluginManager()->callEvent($event);
+            Server::getInstance()->getPluginManager()->callEvent(new HudDamagePlayerEvent($this->loader, $entity));
             return;
         }
     }
