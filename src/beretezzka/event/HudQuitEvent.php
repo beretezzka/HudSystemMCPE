@@ -1,10 +1,8 @@
 <?php
 
-namespace beretezzka\beretmine\hudsystem\event;
+namespace beretezzka\event;
 
 use pocketmine\event\plugin\PluginEvent;
-use pocketmine\inventory\Inventory;
-use pocketmine\item\Item;
 use pocketmine\Player;
 use pocketmine\plugin\Plugin;
 

@@ -8,9 +8,6 @@ use pocketmine\Player;
 use pocketmine\level\Position;
 use pocketmine\item\Item;
 use beretezzka\beretmine\npc\auction\Auction;
-use pocketmine\inventory\ChestInventory;
-
-use function array_merge;
 use function array_slice;
 use function count;
 
@@ -46,7 +43,6 @@ class HudPersonalInventoryD extends HudPersonalInventory implements InventoryHol
 			$this->right->broadcastBlockEventPacket(false);
 		}
 		parent::onClose($who);
-		Auction::getInstance()->addToDelayedClose($who);
 	}
 
 	public function getItem(int $index) : Item{
@@ -62,16 +58,14 @@ class HudPersonalInventoryD extends HudPersonalInventory implements InventoryHol
 		return false;
 	}
 
-    public function getContents(bool $includeEmpty = false): array
-    {
-        if ($this->getLeftSide() instanceof ChestInventory && $this->getRightSide() instanceof ChestInventory) {
-            $result = $this->getLeftSide()->getContents($includeEmpty);
-            $leftSize = $this->getLeftSide()->getSize();
+    public function getContents(bool $includeEmpty = false): array{
+        $result = $this->getLeftSide()->getContents($includeEmpty);
+        $leftSize = $this->getLeftSide()->getSize();
 
-            foreach ($this->getRightSide()->getContents($includeEmpty) as $i => $item) {
-                $result[$i + $leftSize] = $item;
-            }
+        foreach ($this->getRightSide()->getContents($includeEmpty) as $i => $item) {
+            $result[$i + $leftSize] = $item;
         }
+
         return $result;
     }
 
@@ -103,16 +97,10 @@ class HudPersonalInventoryD extends HudPersonalInventory implements InventoryHol
 		return -1;
 	}
 
-	/**
-	 * @return ChestInventory
-	 */
 	public function getLeftSide() : HudPersonalInventory{
 		return $this->left;
 	}
 
-	/**
-	 * @return ChestInventory
-	 */
 	public function getRightSide() : HudPersonalInventory{
 		return $this->right;
 	}

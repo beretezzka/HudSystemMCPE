@@ -6,15 +6,14 @@ use beretezzka\event\{HudUpdateEvent, HudSwitchListEvent};
 use beretezzka\inventory\HudPersonalInventory;
 use beretezzka\inventory\HudPersonalInventoryD;
 use beretezzka\Events;
-
-
-
 use pocketmine\block\Block;
 use pocketmine\block\BlockIds;
 use pocketmine\inventory\ContainerInventory;
 use pocketmine\inventory\Inventory;
 use pocketmine\item\Item;
+use pocketmine\item\ItemIds;
 use pocketmine\level\Position;
+use pocketmine\math\Facing;
 use pocketmine\math\Vector3;
 use pocketmine\nbt\NetworkLittleEndianNBTStream;
 use pocketmine\nbt\tag\CompoundTag;
@@ -27,16 +26,14 @@ use pocketmine\plugin\PluginBase;
 use pocketmine\scheduler\ClosureTask;
 use pocketmine\Server;
 use pocketmine\tile\Chest;
+use pocketmine\tile\Tile;
 
 class HudSystem extends PluginBase{
 
-	// По вопросам: vk.com/To4No_Ne_Beret
-	// ver 1.2
+	// Version 1.4: Submarine
 
-    private array $viewers = ["mini" => [], "double" => []], 
+    public array $viewers = ["mini" => [], "double" => []], 
                   $lists = ["mini" => [], "double" => []];
-
-    private $loader;
 	public static $instance;
 
     public function onEnable(){
@@ -63,11 +60,11 @@ class HudSystem extends PluginBase{
 		return $this->lists["double"][$player->getLowerCaseName()] = $list;
 	}
 
-	public function getListDouble(Player $player, $list){
+	public function getListDouble(Player $player){
 		return $this->lists["double"][$player->getLowerCaseName()];
 	}
 
-	public function getListMini(Player $player, $list){
+	public function getListMini(Player $player){
 		return $this->lists["mini"][$player->getLowerCaseName()];
 	}
 
@@ -104,8 +101,8 @@ class HudSystem extends PluginBase{
 			return;
 		}
 
-        $vector3 = $player->floor()->subtract(0, 3);
-        $pairVector3 = $vector3->getSide(Vector3::SIDE_WEST);
+        $vector3 = $player->floor()->subtract(0, 2, 0);
+        $pairVector3 = $vector3->getSide(Facing::WEST);
         $level = $player->getLevel();
 		$blockReplaced = $level->getBlock($vector3);
 
@@ -125,7 +122,7 @@ class HudSystem extends PluginBase{
 
 		$this->viewers["mini"][$player->getLowerCaseName()] = [$inventory, $blockReplaced, $player->floor()];
 
-        $this->loader->getScheduler()->scheduleDelayedTask(new ClosureTask(function(int $currentTick) use($inventory, $player) : void{
+        $this->getScheduler()->scheduleDelayedTask(new ClosureTask(function(int $currentTick) use($inventory, $player) : void{
             $this->openWindow($inventory, $player);
         }), 2);
     }
@@ -139,8 +136,8 @@ class HudSystem extends PluginBase{
 			return;
 		}
 
-		$blockReplaced = ($level = $player->getLevel())->getBlock($vector3 = $player->floor()->subtract(0, 3));
-		$blockReplaced2 = $level->getBlock($pairVector3 = $vector3->getSide(Vector3::SIDE_WEST));
+		$blockReplaced = ($level = $player->getLevel())->getBlock($vector3 = $player->floor()->subtract(0, 2, 0));
+		$blockReplaced2 = $level->getBlock($pairVector3 = $vector3->getSide(Facing::WEST));
         if($level === null) return;
 
 		$this->spawnChest($player, Block::get(BlockIds::CHEST, 2, Position::fromObject($vector3)));
@@ -168,7 +165,7 @@ class HudSystem extends PluginBase{
 
 		$this->viewers["double"][$player->getLowerCaseName()] = [$inventory, $blockReplaced, $blockReplaced2, $player->floor()];
 
-        $this->loader->getScheduler()->scheduleDelayedTask(new ClosureTask(function(int $currentTick) use($inventory, $player) : void{
+        $this->getScheduler()->scheduleDelayedTask(new ClosureTask(function(int $currentTick) use($inventory, $player) : void{
 			$this->openWindow($inventory, $player);
         }), 2);
     }
@@ -262,10 +259,10 @@ class HudSystem extends PluginBase{
     
     public function fillWindowSlot(ContainerInventory $inventory, int $slot, Item $item) : void{
 		if($item->getId() !== ItemIds::AIR){
-			$nbt = $item->getNamedTag() ?? new CompoundTag();
-			$nbt->setByte("HudItem", 1);
+			$nbt = $item->getNamedTag();
+        	$nbt->setByte("HudItem", 1);
 			$nbt->setString("Title", $inventory->getTitle());
-			$item->setNamedTagEntry($nbt);
+        	$item->setNamedTag($nbt);
 		}
         $inventory->setItem($slot, $item);
 	}

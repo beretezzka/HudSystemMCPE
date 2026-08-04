@@ -1,6 +1,6 @@
 <?php
 
-namespace beretezzka\beretmine\hudsystem\event;
+namespace beretezzka\event;
 
 use pocketmine\event\plugin\PluginEvent;
 use pocketmine\item\Item;

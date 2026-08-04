@@ -4,7 +4,6 @@ namespace beretezzka\event;
 
 use pocketmine\event\plugin\PluginEvent;
 use pocketmine\inventory\ContainerInventory;
-use pocketmine\inventory\Inventory;
 use pocketmine\Player;
 use pocketmine\plugin\Plugin;
 

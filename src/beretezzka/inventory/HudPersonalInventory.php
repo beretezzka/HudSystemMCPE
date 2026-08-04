@@ -4,9 +4,9 @@ namespace beretezzka\inventory;
 
 use pocketmine\network\mcpe\protocol\BlockEventPacket;
 use pocketmine\network\mcpe\protocol\LevelSoundEventPacket;
-use pocketmine\network\mcpe\protocol\types\WindowTypes;
 use pocketmine\inventory\ContainerInventory;
 use pocketmine\level\Position;
+use pocketmine\network\mcpe\protocol\types\inventory\WindowTypes;
 use pocketmine\Player;
 use function count;
 

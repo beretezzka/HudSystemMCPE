@@ -21,13 +21,13 @@ use pocketmine\event\inventory\InventoryTransactionEvent;
 use pocketmine\event\Listener;
 use pocketmine\event\player\PlayerDropItemEvent;
 use pocketmine\event\player\PlayerQuitEvent;
-use pocketmine\inventory\PETransaction\TransactionQueue;
+use pocketmine\inventory\transaction\action\DropItemAction;
 use pocketmine\inventory\transaction\action\SlotChangeAction;
 use pocketmine\inventory\transaction\InventoryTransaction;
 use pocketmine\item\Item;
 use pocketmine\Player;
 use pocketmine\event\player\PlayerCommandPreprocessEvent;
-use pocketmine\event\inventory\InventoryPickupItemEvent;
+use pocketmine\inventory\transaction\action\ContainerDropItemAction;
 use pocketmine\Server;
 
 class Events implements Listener{
@@ -43,7 +43,7 @@ class Events implements Listener{
         if (!HudSystem::getInstance()->isViewDouble($player) && !HudSystem::getInstance()->isViewMini($player)) {
             return;
         }
-        Server::getInstance()->getPluginManager()->callEvent(new HudQuitEvent($this->loader, $player));
+        Server::getInstance()->getPluginManager()->callEvent(new HudQuitEvent($this->loader, $player, HudSystem::getInstance()->viewers["mini"], HudSystem::getInstance()->viewers["double"]));
         return;
     }
 
@@ -71,7 +71,7 @@ class Events implements Listener{
         if (!HudSystem::getInstance()->isViewDouble($player) && !HudSystem::getInstance()->isViewMini($player)) {
             return;
         }
-        if($event->getTo()->distance($event->getFrom()) > 0.12){
+        if($event->getTo()->distance($event->getFrom()) > 0.09){
             if(HudSystem::getInstance()->isViewDouble($player)){
                 HudSystem::getInstance()->closeDouble($player);
             }
@@ -86,6 +86,7 @@ class Events implements Listener{
             $event->getPlayer()->sendMessage("§r§cКоманду невозможно ввести в данный момент.");
             $event->setCancelled();
         }
+        
     }
 
     public function transaction(InventoryTransactionEvent $event){
@@ -97,22 +98,33 @@ class Events implements Listener{
         }
 
         $event->setCancelled();
-        if ($transaction instanceof TransactionQueue) {
-            foreach ($transaction->getTransactions() as $_transaction) {
-                $inventory = $_transaction->getInventory();
-                $item = $inventory->getItem($_transaction->getSlot());
-                if(!$item instanceof Item || $item == null){
-                    continue;
-                }
-                if (!HudSystem::getInstance()->isHudItem($item)) {
-                    continue;
-                }
-                Server::getInstance()->getPluginManager()->callEvent(new HudTransactionEvent($this->loader, $inventory, $player, $item));
-                continue;
-            }
-        } elseif ($transaction instanceof InventoryTransaction) {
+        if ($transaction instanceof InventoryTransaction) {
             foreach ($transaction->getActions() as $_transaction) {
-                if ($_transaction instanceof SlotChangeAction) {
+                if($_transaction instanceof ContainerDropItemAction){
+                    $item = $_transaction->getTargetItem();
+
+                    if(!HudSystem::getInstance()->isHudItem($item)){
+                        continue;   
+                    }
+
+                    if(!$item instanceof Item || $item == null){
+                        continue;
+                    }
+                    Server::getInstance()->getPluginManager()->callEvent(new HudDropEvent($this->loader, $player, $item));
+                    continue;
+                }elseif($_transaction instanceof DropItemAction){
+                    $item = $_transaction->getTargetItem();
+
+                    if(!HudSystem::getInstance()->isHudItem($item)){
+                        continue;   
+                    }
+
+                    if(!$item instanceof Item || $item == null){
+                        continue;
+                    }
+                    Server::getInstance()->getPluginManager()->callEvent(new HudDropEvent($this->loader, $player, $item));
+                    continue;
+                }elseif ($_transaction instanceof SlotChangeAction) {
                     $inventory = $_transaction->getInventory();
                     $item = $inventory->getItem($_transaction->getSlot());
                     if(!$item instanceof Item || $item == null){
@@ -134,7 +146,7 @@ class Events implements Listener{
         }
 
         if($inventory instanceof HudPersonalInventoryD){
-            Server::getInstance()->getPluginManager()->callEvent(new HudDoubleOpenEvent($this->loader, $player));
+            Server::getInstance()->getPluginManager()->callEvent(new HudDoubleOpenEvent($this->loader, $player, $inventory));
             return;
         }
         if($inventory instanceof HudPersonalInventory){
@@ -158,32 +170,17 @@ class Events implements Listener{
         }
     }
 
-    public function pickupitem(InventoryPickupItemEvent $event) {
-        if(!$event->getInventory() instanceof PlayerInventory) return;
-        $player = $event->getInventory()->getHolder();
-        if (HudSystem::getInstance()->isViewDouble($player) || HudSystem::getInstance()->isViewMini($player)) {
-            $event->setCancelled(true);
-            return;
-        }
-        if(HudSystem::getInstance()->isHudItem($event->getItem())){
-            if(!$event->getItem()->isClosed()){
-                $event->getItem()->close();
-                return;
-            }
-        }
-    }
-
     public function drop(PlayerDropItemEvent $event){
         $player = $event->getPlayer();
         if (!HudSystem::getInstance()->isViewDouble($player) && !HudSystem::getInstance()->isViewMini($player)) {
             return;
         }
-
+        
         if(HudSystem::getInstance()->isHudItem($event->getItem())){
+            Server::getInstance()->getPluginManager()->callEvent(new HudDropEvent($this->loader, $player, $event->getItem()));
             $event->setCancelled(true);
         }
 
-        Server::getInstance()->getPluginManager()->callEvent(new HudDropEvent($this->loader, $player, $event->getItem()));
         return;
     }
 
