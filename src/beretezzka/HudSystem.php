@@ -26,11 +26,10 @@ use pocketmine\plugin\PluginBase;
 use pocketmine\scheduler\ClosureTask;
 use pocketmine\Server;
 use pocketmine\tile\Chest;
-use pocketmine\tile\Tile;
 
 class HudSystem extends PluginBase{
 
-	// Version 1.4: Submarine
+	// Version 1.5: Submarine
 
     public array $viewers = ["mini" => [], "double" => []], 
                   $lists = ["mini" => [], "double" => []];

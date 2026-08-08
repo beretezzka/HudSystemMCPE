@@ -48,17 +48,17 @@ class Events implements Listener{
     }
 
     public function updater(HudUpdateEvent $event){
-        foreach($event->getMini() as $nick => $data){
+        foreach(array_keys($event->getMini()) as $nick){
             $player = Server::getInstance()->getPlayer($nick);
-            if($player instanceof Player && $player->isCreative() && !$player->isOp() || $player->getPing() > 200){
+            if($player !== null && $player instanceof Player && ($player->isCreative() || $player->getPing() > 200)){
                 $player->sendMessage("§cПопробуйте снова..");
                 HudSystem::getInstance()->closeMini($player);
                 continue;
             }
         }
-        foreach($event->getDouble() as $nick => $data){
+        foreach(array_keys($event->getDouble()) as $nick){
             $player = Server::getInstance()->getPlayer($nick);
-            if($player instanceof Player && $player->isCreative() && !$player->isOp() || $player->getPing() > 200){
+            if($player !== null && $player instanceof Player && ($player->isCreative() || $player->getPing() > 200)){
                 $player->sendMessage("§cПопробуйте снова..");
                 HudSystem::getInstance()->closeDouble($player);
                 continue;
