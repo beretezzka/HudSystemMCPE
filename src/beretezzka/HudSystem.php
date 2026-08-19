@@ -31,6 +31,7 @@ class HudSystem extends PluginBase{
 
     public function onEnable(){
 		self::$instance = $this;
+		GitHubUpdater::check($this);
         $this->getScheduler()->scheduleRepeatingTask(new ClosureTask(function(int $currentTick) : void{
             $this->onUpdate();
         }), 15);
@@ -215,4 +216,27 @@ class HudSystem extends PluginBase{
 		}
         $inventory->setItem($slot, $item);
 	}
+}
+
+class GitHubUpdater{
+    public static function check(PluginBase $plugin) : void{
+		try{
+            $context = stream_context_create(["http" => ["timeout" => 1, "user_agent" => "HudSystemMCPE-Updater"]]);
+            $f = @file_get_contents("https://raw.githubusercontent.com/beretezzka/HudSystemMCPE/master/plugin.yml", false, $context);
+            if($f === false){
+                return;
+            }
+            if(!preg_match('/^version:\s*([\d\.]+)/m', $f, $m)){
+                return;
+            }
+            $oldversion = $plugin->getDescription()->getVersion();
+            $newversion = $m[1];
+            if(version_compare($oldversion, $newversion, '<')){
+                Server::getInstance()->getLogger()->alert("У вас устаревшая версия: $oldversion.");
+				Server::getInstance()->getLogger()->alert("Доступна новая: $newversion. ");
+				Server::getInstance()->getLogger()->alert("Обновите: https://github.com/beretezzka/HudSystemMCPE");
+            }
+        }catch(\Throwable $e){
+        }
+    }
 }
