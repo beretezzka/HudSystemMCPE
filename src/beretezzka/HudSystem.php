@@ -2,36 +2,30 @@
 
 namespace beretezzka;
 
-use beretezzka\event\{HudUpdateEvent, HudSwitchListEvent};
+use beretezzka\event\HudUpdateEvent;
+use beretezzka\inventory\HudBlockScreen;
 use beretezzka\inventory\HudPersonalInventory;
 use beretezzka\inventory\HudPersonalInventoryD;
 use beretezzka\Events;
-use pocketmine\block\Block;
-use pocketmine\block\BlockIds;
 use pocketmine\inventory\ContainerInventory;
 use pocketmine\inventory\Inventory;
 use pocketmine\item\Item;
 use pocketmine\item\ItemIds;
 use pocketmine\level\Position;
-use pocketmine\math\Facing;
-use pocketmine\math\Vector3;
-use pocketmine\nbt\NetworkLittleEndianNBTStream;
-use pocketmine\nbt\tag\CompoundTag;
-use pocketmine\nbt\tag\IntTag;
-use pocketmine\nbt\tag\StringTag;
-use pocketmine\network\mcpe\protocol\BlockActorDataPacket;
-use pocketmine\network\mcpe\protocol\UpdateBlockPacket;
 use pocketmine\Player;
 use pocketmine\plugin\PluginBase;
 use pocketmine\scheduler\ClosureTask;
 use pocketmine\Server;
-use pocketmine\tile\Chest;
 
 class HudSystem extends PluginBase{
 
-	// Version 1.5: Submarine
+	// Version 2.0: Submarine
 
-    public array $viewers = ["mini" => [], "double" => []], 
+    private const OPEN_DELAY = 5;
+
+    private const PURGE_DELAYS = [1, 5, 20];
+
+    public array $viewers = ["mini" => [], "double" => []],
                   $lists = ["mini" => [], "double" => []];
 	public static $instance;
 
@@ -79,161 +73,86 @@ class HudSystem extends PluginBase{
 		return isset($this->viewers["double"][$player->getLowerCaseName()]) ? $this->viewers["double"][$player->getLowerCaseName()][0] : $this->viewers["mini"][$player->getLowerCaseName()][0];
 	}
 
-    public function spawnChest(Player $recipient, Block $block){
-		$pk = new UpdateBlockPacket();
-		$pk->blockId = BlockIds::CHEST;
-		$pk->blockMeta = 0;
-		$pk->x = $block->x;
-		$pk->z = $block->z;
-		$pk->y = $block->y;
-		$pk->flags = UpdateBlockPacket::FLAG_ALL;
-		$recipient->dataPacket($pk);
-    }
-
-	
 	public function open(Player $player, string $name, int $id){
-        if(!$player->isValid()){
+        if(!$this->isSupported($player) || $this->isViewDouble($player) || $this->isViewMini($player)){
 			return;
 		}
 
-		if($this->isViewDouble($player)){
+        $screen = HudBlockScreen::open($player, $name, false);
+
+		if($screen === null){
 			return;
 		}
-
-        $vector3 = $player->floor()->subtract(0, 2, 0);
-        $pairVector3 = $vector3->getSide(Facing::WEST);
-        $level = $player->getLevel();
-		$blockReplaced = $level->getBlock($vector3);
-
-		$this->spawnChest($player, Block::get(BlockIds::CHEST, 2, Position::fromObject($vector3)));
-		
-		$tilePacket = new BlockActorDataPacket();
-        $tilePacket->x = $vector3->getFloorX();
-        $tilePacket->y = $vector3->getFloorY();
-        $tilePacket->z = $vector3->getFloorZ();
-        $tilePacket->namedtag = (new NetworkLittleEndianNBTStream())->write($this->createTileNBT('Chest', $name, $vector3, $pairVector3));
-
-		$player->dataPacket($tilePacket);
 
 		$this->setListMini($player, $id);
 
-		$inventory = new HudPersonalInventory(Position::fromObject($vector3, $player->getLevel()));
+		$inventory = new HudPersonalInventory(Position::fromObject($screen->getPosition(), $player->getLevel()));
 
-		$this->viewers["mini"][$player->getLowerCaseName()] = [$inventory, $blockReplaced, $player->floor()];
+		$this->viewers["mini"][$player->getLowerCaseName()] = [$inventory, $screen];
 
         $this->getScheduler()->scheduleDelayedTask(new ClosureTask(function(int $currentTick) use($inventory, $player) : void{
             $this->openWindow($inventory, $player);
-        }), 2);
+        }), self::OPEN_DELAY);
     }
 
     public function openDouble(Player $player, string $name, int $id){
-        if(!$player->isValid()){
+        if(!$this->isSupported($player) || $this->isViewDouble($player) || $this->isViewMini($player)){
 			return;
 		}
 
-		if($this->isViewDouble($player)){
+        $screen = HudBlockScreen::open($player, $name, true);
+
+		if($screen === null){
 			return;
 		}
-
-		$blockReplaced = ($level = $player->getLevel())->getBlock($vector3 = $player->floor()->subtract(0, 2, 0));
-		$blockReplaced2 = $level->getBlock($pairVector3 = $vector3->getSide(Facing::WEST));
-        if($level === null) return;
-
-		$this->spawnChest($player, Block::get(BlockIds::CHEST, 2, Position::fromObject($vector3)));
-		$this->spawnChest($player, Block::get(BlockIds::CHEST, 2, Position::fromObject($pairVector3)));
-
-		$tilePacket = new BlockActorDataPacket();
-        $tilePacket->x = $vector3->getFloorX();
-        $tilePacket->y = $vector3->getFloorY();
-        $tilePacket->z = $vector3->getFloorZ();
-        $tilePacket->namedtag = (new NetworkLittleEndianNBTStream())->write($this->createTileNBT('Chest', $name, $vector3, $pairVector3));
-
-		$player->dataPacket($tilePacket);
-
-		$tilePacket = new BlockActorDataPacket();
-        $tilePacket->x = $pairVector3->getFloorX();
-        $tilePacket->y = $pairVector3->getFloorY();
-        $tilePacket->z = $pairVector3->getFloorZ();
-        $tilePacket->namedtag = (new NetworkLittleEndianNBTStream())->write($this->createTileNBT('Chest', $name, $pairVector3, $vector3));
-
-		$player->dataPacket($tilePacket);
 
 		$this->setListDouble($player, $id);
 
-		$inventory = new HudPersonalInventoryD(new HudPersonalInventory(Position::fromObject($vector3, $player->getLevel())), new HudPersonalInventory(Position::fromObject($pairVector3, $player->getLevel())), Position::fromObject($vector3, $player->getLevel()));
+		$origin = $screen->getPosition();
+		$pair = $origin->add(1, 0, 0);
 
-		$this->viewers["double"][$player->getLowerCaseName()] = [$inventory, $blockReplaced, $blockReplaced2, $player->floor()];
+		$inventory = new HudPersonalInventoryD(new HudPersonalInventory(Position::fromObject($origin, $player->getLevel())), new HudPersonalInventory(Position::fromObject($pair, $player->getLevel())), Position::fromObject($origin, $player->getLevel()));
+
+		$this->viewers["double"][$player->getLowerCaseName()] = [$inventory, $screen];
 
         $this->getScheduler()->scheduleDelayedTask(new ClosureTask(function(int $currentTick) use($inventory, $player) : void{
 			$this->openWindow($inventory, $player);
-        }), 2);
+        }), self::OPEN_DELAY);
     }
 
 	public function closeDouble(Player $player){
-		if(!$player->isValid()){
+		if(!$player->isValid() || !$this->isViewDouble($player)){
 			return;
 		}
 
-		if (!HudSystem::getInstance()->isViewDouble($player)) {
-            return;
-        }
-
-		if(!$player instanceof Player or !$player->isOnline()){
-			return;
-		}
-		
-		if(!isset($this->viewers["double"][$player->getLowerCaseName()])){
-			if(isset($this->lists["double"][$player->getLowerCaseName()])) unset($this->lists["double"][$player->getLowerCaseName()]);
-			return;
-		}
-
-		$blocksReplaced = $this->viewers["double"][$player->getLowerCaseName()][1];
-		$blocksReplaced2 = $this->viewers["double"][$player->getLowerCaseName()][2];
-
-		$level = $player->getLevel();
-		if($level !== null && $player->isValid()){
-			$level->sendBlocks([$player], [$blocksReplaced, $blocksReplaced2], UpdateBlockPacket::FLAG_ALL_PRIORITY);
-			$tile1 = $level->getTile($blocksReplaced->asPosition());
-			$tile2 = $level->getTile($blocksReplaced2->asPosition());
-			if($tile1 instanceof Chest && $player->isValid()){
-				$tile1->spawnTo($player);
-			}
-			if($tile2 instanceof Chest && $player->isValid()){
-				$tile2->spawnTo($player);
-			}
-		}
 		unset($this->lists["double"][$player->getLowerCaseName()]);
+
+		$screen = $this->viewers["double"][$player->getLowerCaseName()][1] ?? null;
 		unset($this->viewers["double"][$player->getLowerCaseName()]);
+
+		if($screen !== null){
+			$screen->restore();
+		}
+
+		$this->purge($player);
+		$this->purgeLater($player);
 	}
 
 	public function closeMini(Player $player){
-		if(!$player->isValid()){
+		if(!$player->isValid() || !$this->isViewMini($player)){
 			return;
 		}
 
-		if (!HudSystem::getInstance()->isViewMini($player)) {
-            return;
-        }
-		if(!$player instanceof Player or !$player->isOnline()){
-			return;
-		}
-
-		
-		if(HudSystem::getInstance()->isViewMini($player)){
-			$blocksReplaced = $this->viewers["mini"][$player->getLowerCaseName()][1];
-		}else{
-			return;
-		}
-
-		if($player->isValid()){
-			$player->getLevel()->sendBlocks([$player], [$blocksReplaced], UpdateBlockPacket::FLAG_ALL_PRIORITY);
-			$tile = $player->getLevel()->getTile($blocksReplaced->asPosition());
-			if($tile instanceof Chest){
-				$tile->spawnTo($player);
-			}
-		}
+		$screen = $this->viewers["mini"][$player->getLowerCaseName()][1] ?? null;
 		unset($this->viewers["mini"][$player->getLowerCaseName()]);
 		unset($this->lists["mini"][$player->getLowerCaseName()]);
+
+		if($screen !== null){
+			$screen->restore();
+		}
+
+		$this->purge($player);
+		$this->purgeLater($player);
 	}
 
     public function openWindow(Inventory $inventory, Player $player){
@@ -248,15 +167,46 @@ class HudSystem extends PluginBase{
 		unset($this->lists["double"][$player->getLowerCaseName()]);
     }
 
-	public function isHudItem(Item $item){
+	public function isSupported(Player $player) : bool{
+		return $player->isValid() && !$player->isSpectator();
+	}
+
+	public function isHudItem(Item $item) : bool{
 		return isset($item->getNamedTag()["HudItem"]);
 	}
 
-	public function isValidItem(ContainerInventory $inventory, Item $item){
-		return $item->getNamedTag()["Title"] == $inventory->getTitle();
+	public function purge(Player $player) : void{
+		$this->sweep($player->getCursorInventory());
+		$this->sweep($player->getCraftingGrid());
+		$this->sweep($player->getUIInventory());
+		$this->sweep($player->getInventory());
+		$this->sweep($player->getArmorInventory());
+		$this->sweep($player->getOffHandInventory());
 	}
-    
-    public function fillWindowSlot(ContainerInventory $inventory, int $slot, Item $item) : void{
+
+	public function purgeLater(Player $player) : void{
+		foreach (self::PURGE_DELAYS as $delay) {
+			$this->getScheduler()->scheduleDelayedTask(new ClosureTask(function (int $currentTick) use ($player) : void {
+				if (!$player->isOnline()) {
+					return;
+				}
+
+				$this->purge($player);
+
+				$player->getInventory()->sendContents($player);
+			}), $delay);
+		}
+	}
+
+	private function sweep(Inventory $inventory) : void{
+		foreach ($inventory->getContents() as $slot => $item) {
+			if (isset($item->getNamedTag()["HudItem"])) {
+				$inventory->clear($slot);
+			}
+		}
+	}
+
+	public function fillWindowSlot(ContainerInventory $inventory, int $slot, Item $item) : void{
 		if($item->getId() !== ItemIds::AIR){
 			$nbt = $item->getNamedTag();
         	$nbt->setByte("HudItem", 1);
@@ -264,20 +214,5 @@ class HudSystem extends PluginBase{
         	$item->setNamedTag($nbt);
 		}
         $inventory->setItem($slot, $item);
-	}
-	
-	public static function createTileNBT(string $saveId, string $customName, Vector3 $pos, Vector3 $pairPos) : CompoundTag{
-		return new CompoundTag("", [
-			new StringTag("id", $saveId),
-
-			new IntTag("x", $pos->x),
-			new IntTag("y", $pos->y),
-			new IntTag("z", $pos->z),
-
-			new IntTag("pairx", $pairPos->x),
-			new IntTag("pairz", $pairPos->z),
-
-			new StringTag("CustomName", $customName)
-		]);
 	}
 }

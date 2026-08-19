@@ -158,14 +158,11 @@ class Events implements Listener{
     public function close(InventoryCloseEvent $event){
         $inventory = $event->getInventory();
         $player = $event->getPlayer();
-        
+
         if($inventory instanceof HudPersonalInventoryD || $inventory instanceof HudPersonalInventory){
             Server::getInstance()->getPluginManager()->callEvent(new HudCloseEvent($this->loader, $player, $inventory));
-            foreach($player->getInventory()->getContents() as $item){
-                if(HudSystem::getInstance()->isHudItem($item)){
-                    $player->getInventory()->remove($item);
-                }
-            }
+            HudSystem::getInstance()->purge($player);
+            HudSystem::getInstance()->purgeLater($player);
             return;
         }
     }
@@ -175,10 +172,12 @@ class Events implements Listener{
         if (!HudSystem::getInstance()->isViewDouble($player) && !HudSystem::getInstance()->isViewMini($player)) {
             return;
         }
-        
+
         if(HudSystem::getInstance()->isHudItem($event->getItem())){
-            Server::getInstance()->getPluginManager()->callEvent(new HudDropEvent($this->loader, $player, $event->getItem()));
             $event->setCancelled(true);
+            HudSystem::getInstance()->purge($player);
+            $player->getInventory()->sendContents($player);
+            Server::getInstance()->getPluginManager()->callEvent(new HudDropEvent($this->loader, $player, $event->getItem()));
         }
 
         return;
