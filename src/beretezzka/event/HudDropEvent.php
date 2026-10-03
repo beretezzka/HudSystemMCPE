@@ -9,10 +9,10 @@ use pocketmine\plugin\Plugin;
 
 class HudDropEvent extends PluginEvent{
     
-    public $player, $item;
-    public function __construct(Plugin $plugin, Player $player, Item $item){
-        $this->player = $player;
-        $this->item = $item;
+    public function __construct(
+        public readonly Plugin $plugin,
+        public readonly Player $player,
+        public readonly Item $item){
         return parent::__construct($plugin);
     }
 
@@ -23,11 +23,6 @@ class HudDropEvent extends PluginEvent{
 
     public function getPlayer(): Player{
         return $this->player;
-    }
-
-    public function setCancelled(bool $value = true): void
-    {
-        parent::setCancelled($value);
     }
 
     public function getItem(): Item{

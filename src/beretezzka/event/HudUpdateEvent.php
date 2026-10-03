@@ -6,27 +6,17 @@ use pocketmine\event\plugin\PluginEvent;
 use pocketmine\plugin\Plugin;
 
 class HudUpdateEvent extends PluginEvent{
-    
-    public array $viewers;
 
-    public function __construct(Plugin $plugin, array $viewers){
-        $this->viewers = $viewers;
+    public function __construct(
+        public readonly Plugin $plugin, 
+        public readonly array $viewers){
+
         return parent::__construct($plugin);
-    }
-
-    public function setCancelled(bool $value = true): void
-    {
-        parent::setCancelled($value);
-    }
-
-    public function isCancelled(): bool
-    {
-        return parent::isCancelled();
     }
 
     public function getPlugin(): Plugin
     {
-        return parent::getPlugin();
+        return $this->plugin;
     }
 
     public function getMini(): array{

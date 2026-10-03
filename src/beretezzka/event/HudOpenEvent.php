@@ -9,15 +9,13 @@ use pocketmine\plugin\Plugin;
 
 class HudOpenEvent extends PluginEvent{
 
-    public $plugin, $player, $inventory;
-    public function __construct(Plugin $plugin, Player $player, HudPersonalInventory $inventory){
-        $this->player = $player;
-        $this->inventory = $inventory;
+    public function __construct(
+            public readonly Plugin $plugin,
+            public readonly Player $player,
+            public readonly HudPersonalInventory $inventory,
+            public readonly int $list
+        ){
         return parent::__construct($plugin);
-    }
-
-    public function setCancelled(bool $value = true): void{
-        parent::setCancelled($value);
     }
 
     public function getPlugin(): Plugin{
@@ -32,4 +30,7 @@ class HudOpenEvent extends PluginEvent{
         return $this->inventory;
     }
 
+    public function getList(): int{
+        return $this->list;
+    }
 }

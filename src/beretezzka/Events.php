@@ -146,11 +146,11 @@ class Events implements Listener{
         }
 
         if($inventory instanceof HudPersonalInventoryD){
-            Server::getInstance()->getPluginManager()->callEvent(new HudDoubleOpenEvent($this->loader, $player, $inventory));
+            Server::getInstance()->getPluginManager()->callEvent(new HudDoubleOpenEvent($this->loader, $player, $inventory, HudSystem::getInstance()->getListDouble($player)));
             return;
         }
         if($inventory instanceof HudPersonalInventory){
-            Server::getInstance()->getPluginManager()->callEvent(new HudOpenEvent($this->loader, $player, $inventory));
+            Server::getInstance()->getPluginManager()->callEvent(new HudOpenEvent($this->loader, $player, $inventory, HudSystem::getInstance()->getListMini($player)));
             return;
         }
     }

@@ -7,35 +7,19 @@ use pocketmine\Player;
 use pocketmine\plugin\Plugin;
 
 class HudQuitEvent extends PluginEvent{
-    
-    public array $mini = [],
-                 $double = [];
-    public $player, $plugin;
 
-    public function __construct(Plugin $plugin, Player $player, $mini = [], $double = []){
-        $this->player = $player;
-        $this->double = $double;
-        $this->mini = $mini;
+    public function __construct(
+        public readonly Plugin $plugin, 
+        public readonly Player $player){
+
         return parent::__construct($plugin);
     }
 
-    public function setCancelled(bool $value = true): void{
-        parent::setCancelled($value);
-    }
-    
     public function getPlayer(): Player{
         return $this->player;
     }
 
     public function getPlugin(): Plugin{
         return parent::getPlugin();
-    }
-
-    public function getAllMini(): array{
-        return $this->mini;
-    }
-
-    public function getAllDouble(): array{
-        return $this->double;
     }
 }

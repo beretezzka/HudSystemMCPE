@@ -9,10 +9,11 @@ use pocketmine\plugin\Plugin;
 
 class HudDoubleOpenEvent extends PluginEvent{
 
-    public $plugin, $player, $inventory;
-    public function __construct(Plugin $plugin, Player $player, HudPersonalInventoryD $inventory){
-        $this->player = $player;
-        $this->inventory = $inventory;
+    public function __construct(
+        public readonly Plugin $plugin,
+        public readonly Player $player,
+        public readonly HudPersonalInventoryD $inventory,
+        public readonly int $list){
         return parent::__construct($plugin);
     }
 
@@ -30,5 +31,9 @@ class HudDoubleOpenEvent extends PluginEvent{
 
     public function getInventory(): HudPersonalInventoryD {
         return $this->inventory;
+    }
+
+    public function getList(): int{
+        return $this->list;
     }
 }

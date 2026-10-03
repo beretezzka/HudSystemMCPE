@@ -7,7 +7,6 @@ use pocketmine\inventory\InventoryHolder;
 use pocketmine\Player;
 use pocketmine\level\Position;
 use pocketmine\item\Item;
-use beretezzka\beretmine\npc\auction\Auction;
 use function array_slice;
 use function count;
 

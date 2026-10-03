@@ -74,7 +74,7 @@ class HudSystem extends PluginBase{
 		return isset($this->viewers["double"][$player->getLowerCaseName()]) ? $this->viewers["double"][$player->getLowerCaseName()][0] : $this->viewers["mini"][$player->getLowerCaseName()][0];
 	}
 
-	public function open(Player $player, string $name, int $id){
+	public function open(Player $player, string $name, int $list){
         if(!$this->isSupported($player) || $this->isViewDouble($player) || $this->isViewMini($player)){
 			return;
 		}
@@ -85,7 +85,7 @@ class HudSystem extends PluginBase{
 			return;
 		}
 
-		$this->setListMini($player, $id);
+		$this->setListMini($player, $list);
 
 		$inventory = new HudPersonalInventory(Position::fromObject($screen->getPosition(), $player->getLevel()));
 
@@ -96,7 +96,7 @@ class HudSystem extends PluginBase{
         }), self::OPEN_DELAY);
     }
 
-    public function openDouble(Player $player, string $name, int $id){
+    public function openDouble(Player $player, string $name, int $list){
         if(!$this->isSupported($player) || $this->isViewDouble($player) || $this->isViewMini($player)){
 			return;
 		}
@@ -107,7 +107,7 @@ class HudSystem extends PluginBase{
 			return;
 		}
 
-		$this->setListDouble($player, $id);
+		$this->setListDouble($player, $list);
 
 		$origin = $screen->getPosition();
 		$pair = $origin->add(1, 0, 0);
@@ -231,7 +231,7 @@ class GitHubUpdater{
             }
             $oldversion = $plugin->getDescription()->getVersion();
             $newversion = $m[1];
-            if(version_compare($oldversion, $newversion, '<')){
+            if($oldversion < $newversion){
                 Server::getInstance()->getLogger()->alert("У вас устаревшая версия: $oldversion.");
 				Server::getInstance()->getLogger()->alert("Доступна новая: $newversion. ");
 				Server::getInstance()->getLogger()->alert("Обновите: https://github.com/beretezzka/HudSystemMCPE");

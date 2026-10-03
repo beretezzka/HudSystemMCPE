@@ -2,18 +2,17 @@
 
 namespace beretezzka\event;
 
+use beretezzka\inventory\HudPersonalInventory;
 use pocketmine\event\plugin\PluginEvent;
-use pocketmine\inventory\ContainerInventory;
 use pocketmine\Player;
 use pocketmine\plugin\Plugin;
 
 class HudCloseEvent extends PluginEvent{
 
-    public $player, $inventory;
-
-    public function __construct(Plugin $plugin, Player $player, ContainerInventory $inventory){
-        $this->player = $player;
-        $this->inventory = $inventory;
+    public function __construct(
+        public readonly Plugin $plugin,
+        public readonly Player $player,
+        public readonly HudPersonalInventory $inventory){
         return parent::__construct($plugin);
     }
 
@@ -25,12 +24,7 @@ class HudCloseEvent extends PluginEvent{
         return $this->player;
     }
 
-    public function setCancelled(bool $value = true): void
-    {
-        parent::setCancelled($value);
-    }
-
-    public function getInventory(): ContainerInventory{
+    public function getInventory(): HudPersonalInventory{
         return $this->inventory;
     }
     

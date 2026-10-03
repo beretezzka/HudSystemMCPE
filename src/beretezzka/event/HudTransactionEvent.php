@@ -2,6 +2,7 @@
 
 namespace beretezzka\event;
 
+use beretezzka\inventory\HudPersonalInventory;
 use pocketmine\event\plugin\PluginEvent;
 use pocketmine\inventory\Inventory;
 use pocketmine\item\Item;
@@ -9,24 +10,15 @@ use pocketmine\Player;
 use pocketmine\plugin\Plugin;
 
 class HudTransactionEvent extends PluginEvent{
-    
-    public array $mini = [],
-                 $double = [];
-    public $player, $inventory, $item;
 
-    public function __construct(Plugin $plugin, $inventory, Player $player, Item $item, $mini = [], $double = []){
-        $this->player = $player;
-        $this->inventory = $inventory;
-        $this->double = $double;
-        $this->mini = $mini;
-        $this->item = $item;
+    public function __construct(
+        public readonly Plugin $plugin,
+        public readonly HudPersonalInventory $inventory, 
+        public readonly Player $player,
+        public readonly Item $item){
         return parent::__construct($plugin);
     }
 
-    public function setCancelled(bool $value = true): void{
-        parent::setCancelled($value);
-    }
-    
     public function getPlayer(): Player{
         return $this->player;
     }
@@ -35,19 +27,12 @@ class HudTransactionEvent extends PluginEvent{
         return parent::getPlugin();
     }
 
-    public function getInventory() {
+    public function getInventory() : HudPersonalInventory{
         return $this->inventory;
-    }
-
-    public function getAllMini(): array{
-        return $this->mini;
     }
 
     public function getItem(): Item{
         return $this->item;
     }
 
-    public function getAllDouble(): array{
-        return $this->double;
-    }
 }
